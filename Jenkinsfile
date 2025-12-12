@@ -1,48 +1,32 @@
 pipeline {
     agent { label 'agent' }
 
+    tools {
+        maven 'Maven-3.9'
+    }
+
     triggers {
-        // Trigger pipeline using GitHub/GitLab webhook
         githubPush()
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                checkout scm
+                sh 'mvn clean install -DskipTests'
             }
         }
 
-        stage('Build (Skip Tests)') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-            post {
-                success {
-                    echo 'Build completed successfully (tests skipped).'
-                }
-            }
-        }
-
-        stage('Run Tests') {
+        stage('Test') {
             steps {
                 sh 'mvn test'
             }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                }
-            }
         }
-    }
 
-    post {
-        success {
-            archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
-        }
-        failure {
-            echo 'Pipeline failed. Check logs.'
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
         }
     }
 }
